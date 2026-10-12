@@ -24,6 +24,7 @@ import {
   readFrontmatterImagePath,
   readFrontmatterWeight,
   renderMarkdownInto,
+  isLightColor,
 } from '../utils';
 import { t } from '../i18n';
 import { paintDrawingOnCanvas } from '../drawing';
@@ -1036,15 +1037,16 @@ export class DinoTabletopView extends ItemView {
     const mark = el.createDiv({ cls: 'dte-poi-mark' });
     if (poi.color) {
       mark.style.background = poi.color;
-      mark.style.color = '#fff';
+      mark.style.color = isLightColor(poi.color) ? '#000' : '#fff';
     }
+
     const imgFile = poi.imagePath ? this.app.vault.getAbstractFileByPath(poi.imagePath) : null;
     if (imgFile) {
       const src = this.app.vault.getResourcePath(imgFile as TFile);
       mark.style.backgroundImage = `url("${src}")`;
       mark.style.backgroundSize = 'cover';
       mark.style.backgroundPosition = 'center';
-    } else if (poi.icon && this.plugin.settings.enableCustomFont) {
+    } else if (poi.icon) {
       const iconCls = getIconClass(poi.icon, this.plugin.settings.customFontPrefix);
       const iconEl = mark.createEl('i', { cls: iconCls });
       iconEl.style.fontSize = Math.max(12, Math.round((poi.size || 36) * 0.5)) + 'px';
@@ -1059,6 +1061,7 @@ export class DinoTabletopView extends ItemView {
     let startY = 0;
 
     el.addEventListener('pointerdown', (e: PointerEvent) => {
+      if (e.button !== 0) return;
       e.preventDefault();
       e.stopPropagation();
       dragging = true;
@@ -1319,6 +1322,7 @@ export class DinoTabletopView extends ItemView {
     let startY = 0;
 
     el.addEventListener('pointerdown', (e: PointerEvent) => {
+      if (e.button !== 0) return;
       e.preventDefault();
       e.stopPropagation();
       dragging = true;

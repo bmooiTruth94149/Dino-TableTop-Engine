@@ -94,3 +94,46 @@ export function getIconClass(icon: string | null | undefined, prefix = 'ra'): st
   if (clean.startsWith(prefix + '-')) return `${prefix} ${clean}`;
   return `${prefix} ${prefix}-${clean}`;
 }
+
+/*
+  * funcion para determinar si un color tine una luminancia alta o baja, para poder
+  * determinar si el color del texto debe ser blanco o negro.
+  * la funcion sera true si el color tiene una luminancia alta.
+  * la funcion sera false si el color tiene una luminancia baja.
+*/
+export function isLightColor(color) {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+
+  ctx.fillStyle = color;
+  const normalizedColor = ctx.fillStyle;
+
+  let r, g, b;
+
+  if (normalizedColor.startsWith('#')) {
+    let hex = normalizedColor.slice(1);
+
+    if (hex.length === 3) {
+      hex = hex.split('').map(c => c + c).join('');
+    }
+
+    r = parseInt(hex.slice(0, 2), 16);
+    g = parseInt(hex.slice(2, 4), 16);
+    b = parseInt(hex.slice(4, 6), 16);
+  } else {
+    const match = normalizedColor.match(/[\d.]+/g);
+
+    if (!match || match.length < 3) return false;
+
+    if (normalizedColor.startsWith('rgb')) {
+      [r, g, b] = match.map(Number);
+    } else {
+      return false;
+    }
+  }
+
+  // Calcular luminosidad perceptual
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+
+  return luminance > 0.6;
+}
