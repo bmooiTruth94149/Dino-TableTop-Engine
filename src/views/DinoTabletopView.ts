@@ -1038,6 +1038,7 @@ export class DinoTabletopView extends ItemView {
     if (poi.color) {
       mark.style.background = poi.color;
       mark.style.color = isLightColor(poi.color) ? '#000' : '#fff';
+      mark.style.border = '2px solid ' + (isLightColor(poi.color) ? '#000' : '#fff');
     }
 
     const imgFile = poi.imagePath ? this.app.vault.getAbstractFileByPath(poi.imagePath) : null;
