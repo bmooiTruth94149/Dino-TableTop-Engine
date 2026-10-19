@@ -73,6 +73,7 @@ export const en = {
   'header.addMap': '+ Map',
   'header.addMapFromImage': 'Add map from image...',
   'header.createDrawnMap': 'Create drawn map...',
+  'header.createCellMap': 'Create cell board map (infinite)...',
   'header.editDrawing': 'Drawing',
   'header.configureGrid': 'Grid',
   'header.renameMap': 'Rename map',
@@ -693,7 +694,22 @@ export const en = {
   'missions.selectPoi': 'Map POI',
   'missions.selectNote': 'Select note',
   'missions.createdDay': 'Creation Day',
+
+  // Oracle Module (Hierofante)
+  'modules.oracleName': 'Hierofante',
+  'modules.oracleShort': 'Hierofante',
+  'modules.oracleDesc': 'Solo RPG tarot module with interpretation rules, draw deck, and campaign reading log.',
+  'oracle.panelTitle': 'Hierofante',
+  'oracle.drawCard': 'Draw Card',
+  'oracle.shuffleDeck': 'Shuffle Deck',
+  'oracle.binaryMode': 'Yes/No Mode',
+  'oracle.eventMode': 'Random Event',
+  'oracle.historyTitle': 'Reading Log',
+  'oracle.emptyHistory': 'No cards have been drawn yet.',
+  'oracle.clearHistoryConfirm': 'Are you sure you want to clear the reading log?',
+  'oracle.exportHistory': 'Export',
+  'oracle.importHistory': 'Import',
 };
 
-
 export type TranslationKey = keyof typeof en;
+
