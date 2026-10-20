@@ -1,5 +1,15 @@
 import { App, Modal, Notice, Setting, TFile } from 'obsidian';
-import { BestiaryEntry, HP_KEYS, MAXHP_KEYS, IMAGE_KEYS, IMAGE_EXTS, MapData, TokenData } from '../types';
+import {
+  BestiaryEntry,
+  HP_KEYS,
+  MAXHP_KEYS,
+  IMAGE_KEYS,
+  IMAGE_EXTS,
+  MapData,
+  TokenData,
+  DinoPlugin,
+  IDinoTabletopView,
+} from '../types';
 import { clamp, genId, getIconClass, readFrontmatterStat, readFrontmatterImagePath } from '../utils';
 import { t } from '../i18n';
 import { ItemEditModal } from './ItemEditModal';
@@ -79,7 +89,6 @@ export class BestiaryEntryEditModal extends Modal {
         s
           .setLimits(20, 120, 2)
           .setValue(this.entry.size || 44)
-          .setDynamicTooltip()
           .onChange((v) => (this.entry.size = v))
       );
 
@@ -252,7 +261,7 @@ export class BestiaryEntryEditModal extends Modal {
       btnRow.addButton((b) =>
         b
           .setButtonText(t('common.delete'))
-          .setWarning()
+          .setDestructive()
           .onClick(() => {
             if (!confirm(t('bestiary.deleteConfirm', { name: this.entry.name || t('common.unnamed') }))) return;
             this.close();
@@ -268,12 +277,12 @@ export class BestiaryEntryEditModal extends Modal {
 }
 
 export class BestiaryListModal extends Modal {
-  plugin: any;
-  view: any;
+  plugin: DinoPlugin;
+  view: IDinoTabletopView;
   private selectedPack: string | null = null;
   private searchQuery: string = '';
 
-  constructor(app: App, plugin: any, view: any) {
+  constructor(app: App, plugin: DinoPlugin, view: IDinoTabletopView) {
     super(app);
     this.plugin = plugin;
     this.view = view;
@@ -462,12 +471,9 @@ export class BestiaryListModal extends Modal {
       const imgFile = entry.imagePath ? this.app.vault.getAbstractFileByPath(entry.imagePath) : null;
       if (imgFile) {
         thumb.style.backgroundImage = `url("${this.app.vault.getResourcePath(imgFile as TFile)}")`;
-        thumb.style.backgroundSize = 'cover';
-        thumb.style.backgroundPosition = 'center';
       } else if (entry.icon) {
         const iconCls = getIconClass(entry.icon, 'ra');
-        const iconEl = thumb.createEl('i', { cls: iconCls });
-        iconEl.style.fontSize = '18px';
+        thumb.createEl('i', { cls: iconCls });
       } else {
         thumb.setText((entry.name || '?').slice(0, 2).toUpperCase());
       }
@@ -564,7 +570,7 @@ export class BestiaryListModal extends Modal {
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
     fileInput.accept = '.json';
-    fileInput.style.display = 'none';
+    fileInput.addClass('dte-hidden');
 
     fileInput.addEventListener('change', async () => {
       const file = fileInput.files?.[0];
@@ -572,15 +578,20 @@ export class BestiaryListModal extends Modal {
 
       try {
         const text = await file.text();
-        const parsed = JSON.parse(text);
+        const parsed: unknown = JSON.parse(text);
 
         let incomingEntries: BestiaryEntry[] = [];
         if (Array.isArray(parsed)) {
-          incomingEntries = parsed;
-        } else if (parsed && Array.isArray(parsed.entries)) {
-          incomingEntries = parsed.entries;
+          incomingEntries = parsed as BestiaryEntry[];
+        } else if (
+          parsed &&
+          typeof parsed === 'object' &&
+          'entries' in parsed &&
+          Array.isArray((parsed as { entries: unknown }).entries)
+        ) {
+          incomingEntries = (parsed as { entries: BestiaryEntry[] }).entries;
         } else if (parsed && typeof parsed === 'object') {
-          incomingEntries = Object.values(parsed);
+          incomingEntries = Object.values(parsed as Record<string, BestiaryEntry>);
         }
 
         if (!incomingEntries.length) {
@@ -602,7 +613,7 @@ export class BestiaryListModal extends Modal {
         await this.plugin.saveSettings();
         new Notice(t('bestiary.importSuccess', { count: importedCount }));
         this.renderModal();
-      } catch (err) {
+      } catch {
         new Notice(t('bestiary.importError'));
       }
     });

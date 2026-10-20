@@ -7,6 +7,7 @@ import {
   CardRotationMode,
   DeckData,
   DinoSettings,
+  DinoPlugin,
   MapData,
 } from '../types';
 import { genId } from '../utils';
@@ -78,25 +79,20 @@ export function resolveBackImage(deck: DeckData, card: CardDefinition | undefine
 
 export class CardsPanel {
   app: App;
-  plugin: any;
+  plugin: DinoPlugin;
   el: HTMLElement;
-  private minimized = false;
+  minimized = false;
   private dragOffsetX = 0;
   private dragOffsetY = 0;
   private isDragging = false;
   private onRenderCards: () => void;
 
-  constructor(app: App, plugin: any, panelsLayer: HTMLElement, onRenderCards: () => void) {
+  constructor(app: App, plugin: DinoPlugin, panelsLayer: HTMLElement, onRenderCards: () => void) {
     this.app = app;
     this.plugin = plugin;
     this.onRenderCards = onRenderCards;
 
     this.el = panelsLayer.createDiv({ cls: 'dte-panel dte-cards-panel' });
-    this.el.style.right = '16px';
-    this.el.style.top = '60px';
-    this.el.style.left = 'auto';
-    this.el.style.pointerEvents = 'auto';
-
     this.build();
   }
 
@@ -135,18 +131,20 @@ export class CardsPanel {
       const rect = this.el.getBoundingClientRect();
       this.dragOffsetX = e.clientX - rect.left;
       this.dragOffsetY = e.clientY - rect.top;
-      header.style.cursor = 'grabbing';
+      header.addClass('is-grabbing');
       e.preventDefault();
     });
     window.addEventListener('pointermove', (e) => {
       if (!this.isDragging) return;
-      this.el.style.left = `${e.clientX - this.dragOffsetX}px`;
-      this.el.style.top = `${e.clientY - this.dragOffsetY}px`;
-      this.el.style.right = 'auto';
+      this.el.setCssStyles({
+        left: `${e.clientX - this.dragOffsetX}px`,
+        top: `${e.clientY - this.dragOffsetY}px`,
+        right: 'auto',
+      });
     });
     window.addEventListener('pointerup', () => {
       this.isDragging = false;
-      header.style.cursor = 'grab';
+      header.removeClass('is-grabbing');
     });
 
     const title = header.createDiv({ cls: 'dte-panel-title' });
@@ -296,11 +294,11 @@ export class CardsPanel {
 // ─── Deck Manager Modal ───────────────────────────────────────────────────────
 
 export class DeckManagerModal extends Modal {
-  plugin: any;
+  plugin: DinoPlugin;
   onClose_cb: () => void;
   private selectedDeckId: string | null = null;
 
-  constructor(app: App, plugin: any, onClose_cb: () => void) {
+  constructor(app: App, plugin: DinoPlugin, onClose_cb: () => void) {
     super(app);
     this.plugin = plugin;
     this.onClose_cb = onClose_cb;
@@ -457,7 +455,7 @@ export class DeckManagerModal extends Modal {
     new Setting(container).addButton((btn) => {
       btn
         .setButtonText('Eliminar mazo')
-        .setWarning()
+        .setDestructive()
         .onClick(async () => {
           delete this.settings.decks[deck.id];
           this.selectedDeckId = null;

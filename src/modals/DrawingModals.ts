@@ -1,5 +1,15 @@
 import { App, Modal, Setting } from 'obsidian';
-import { DrawPoint, DrawStroke, DrawTool, DrawingData, DrawingImage, IMAGE_EXTS, MapData } from '../types';
+import {
+  DrawPoint,
+  DrawStroke,
+  DrawTool,
+  DrawingData,
+  DrawingImage,
+  IMAGE_EXTS,
+  MapData,
+  DinoPlugin,
+  IDinoTabletopView,
+} from '../types';
 import { genId } from '../utils';
 import { t } from '../i18n';
 import { paintDrawingOnCanvas } from '../drawing';
@@ -52,8 +62,8 @@ export class NewDrawnMapModal extends Modal {
 }
 
 export class DrawingEditorModal extends Modal {
-  plugin: any;
-  view: any;
+  plugin: DinoPlugin;
+  view: IDinoTabletopView;
   map: MapData;
   drawing: DrawingData;
   tool: DrawTool;
@@ -66,7 +76,7 @@ export class DrawingEditorModal extends Modal {
   toolbarEl: HTMLElement;
   canvas: HTMLCanvasElement;
 
-  constructor(app: App, plugin: any, view: any, map: MapData) {
+  constructor(app: App, plugin: DinoPlugin, view: IDinoTabletopView, map: MapData) {
     super(app);
     this.plugin = plugin;
     this.view = view;
@@ -183,17 +193,15 @@ export class DrawingEditorModal extends Modal {
       const sel = this.drawing.images.find((i) => i.id === this.selectedImageId);
       if (sel) {
         this.toolbarEl.createSpan({ text: ` ${t('drawing.size')} ` });
-        const wIn = this.toolbarEl.createEl('input', { type: 'number' }) as HTMLInputElement;
+        const wIn = this.toolbarEl.createEl('input', { type: 'number', cls: 'dte-input-sm' }) as HTMLInputElement;
         wIn.value = String(Math.round(sel.w));
-        wIn.style.width = '60px';
         wIn.addEventListener('input', () => {
           sel.w = Number(wIn.value) || sel.w;
           this.plugin.saveSettings();
           this.paintCanvas();
         });
-        const hIn = this.toolbarEl.createEl('input', { type: 'number' }) as HTMLInputElement;
+        const hIn = this.toolbarEl.createEl('input', { type: 'number', cls: 'dte-input-sm' }) as HTMLInputElement;
         hIn.value = String(Math.round(sel.h));
-        hIn.style.width = '60px';
         hIn.addEventListener('input', () => {
           sel.h = Number(hIn.value) || sel.h;
           this.plugin.saveSettings();
@@ -281,7 +289,7 @@ export class DrawingEditorModal extends Modal {
         draggingImage = null;
         try {
           this.canvas.releasePointerCapture(e.pointerId);
-        } catch (err) {
+        } catch {
           /* noop */
         }
         return;
@@ -297,7 +305,7 @@ export class DrawingEditorModal extends Modal {
       }
       try {
         this.canvas.releasePointerCapture(e.pointerId);
-      } catch (err) {
+      } catch {
         /* noop */
       }
     };

@@ -1,25 +1,33 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
-import { SupportedLanguage } from '../types';
+import { SupportedLanguage, DinoPlugin, ToolbarLayout } from '../types';
 import { setLanguage, t } from '../i18n';
 import { moduleRegistry } from '../modules/registry';
 import { DinoTabletopView } from '../views/DinoTabletopView';
 
 export class DinoSettingTab extends PluginSettingTab {
-  plugin: any;
+  plugin: DinoPlugin;
 
-  constructor(app: App, plugin: any) {
+  constructor(app: App, plugin: DinoPlugin) {
     super(app, plugin);
     this.plugin = plugin;
   }
 
   display(): void {
+    this.renderSettings();
+  }
+
+  getSettingDefinitions(): [] {
+    return [];
+  }
+
+  private renderSettings(): void {
     const { containerEl } = this;
     containerEl.empty();
 
-    containerEl.createEl('h2', { text: t('settings.title') });
+    new Setting(containerEl).setName(t('settings.title')).setHeading();
 
     // --- Sección: General e Internacionalización ---
-    containerEl.createEl('h3', { text: t('settings.generalSection') });
+    new Setting(containerEl).setName(t('settings.generalSection')).setHeading();
 
     new Setting(containerEl)
       .setName(t('settings.languageName'))
@@ -35,7 +43,7 @@ export class DinoSettingTab extends PluginSettingTab {
             this.plugin.settings.language = lang;
             setLanguage(lang);
             await this.plugin.saveSettings();
-            this.display();
+            this.renderSettings();
 
             // Refresh open DinoTabletopView if active
             const leaves = this.app.workspace.getLeavesOfType('dino-tabletop-engine-view');
@@ -48,7 +56,7 @@ export class DinoSettingTab extends PluginSettingTab {
       );
 
     // --- Sección: Interfaz y Apariencia ---
-    containerEl.createEl('h3', { text: t('settings.interfaceSection') });
+    new Setting(containerEl).setName(t('settings.interfaceSection')).setHeading();
 
     new Setting(containerEl)
       .setName(t('settings.toolbarLayoutName'))
@@ -60,8 +68,8 @@ export class DinoSettingTab extends PluginSettingTab {
           .addOption('floating-left', t('settings.toolbarLayoutFloatingLeft'))
           .addOption('floating-right', t('settings.toolbarLayoutFloatingRight'))
           .setValue(this.plugin.settings.toolbarLayout || 'top')
-          .onChange(async (val: any) => {
-            this.plugin.settings.toolbarLayout = val;
+          .onChange(async (val: string) => {
+            this.plugin.settings.toolbarLayout = val as ToolbarLayout;
             await this.plugin.saveSettings();
 
             // Refresh open DinoTabletopView if active
@@ -75,7 +83,7 @@ export class DinoSettingTab extends PluginSettingTab {
       );
 
     // --- Sección: Módulos Opcionales Integrados ---
-    containerEl.createEl('h3', { text: t('settings.modulesSection') });
+    new Setting(containerEl).setName(t('settings.modulesSection')).setHeading();
     containerEl.createDiv({
       cls: 'dte-hint',
       text: t('settings.modulesSectionDesc'),
@@ -104,13 +112,13 @@ export class DinoSettingTab extends PluginSettingTab {
     }
 
     // --- Sección: Acerca de / About ---
-    containerEl.createEl('h3', { text: t('settings.aboutSection') });
+    new Setting(containerEl).setName(t('settings.aboutSection')).setHeading();
 
     const aboutBox = containerEl.createDiv({ cls: 'dte-settings-about-box' });
 
     const titleRow = aboutBox.createDiv({ cls: 'dte-settings-about-header' });
     titleRow.createEl('strong', { text: 'Dino Tabletop Engine' });
-    titleRow.createSpan({ cls: 'dte-settings-badge', text: `ALPHA v${this.plugin.manifest?.version || '0.1.7'}` });
+    titleRow.createSpan({ cls: 'dte-settings-badge', text: `ALPHA v${this.plugin.manifest?.version || '0.1.8'}` });
 
     const descEl = aboutBox.createDiv({ cls: 'dte-settings-about-desc' });
     descEl.createEl('p', {

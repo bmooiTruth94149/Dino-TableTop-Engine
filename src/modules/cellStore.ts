@@ -1,4 +1,4 @@
-import { CellEdgeStyle, CellMapData, CellPaletteColor, MapFogConfig } from '../types';
+import { CellEdgeStyle, CellMapData, MapFogConfig, DinoPlugin } from '../types';
 
 export const CHUNK_SIZE = 32;
 
@@ -122,11 +122,11 @@ export class CellStore {
   private mapId: string;
   private chunks: Map<string, ChunkMemoryData> = new Map();
   private saveTimeout: any = null;
-  private plugin: any;
+  private plugin: DinoPlugin;
   private isSaving: boolean = false;
   private pendingSave: boolean = false;
 
-  constructor(mapId: string, plugin: any) {
+  constructor(mapId: string, plugin: DinoPlugin) {
     this.mapId = mapId;
     this.plugin = plugin;
   }
@@ -465,7 +465,8 @@ export class CellStore {
    * File path for this map's cell data.
    */
   public getFilePath(): string {
-    const basePath = this.plugin?.manifest?.dir || '.obsidian/plugins/dino-tabletop-engine';
+    const configDir = this.plugin?.app?.vault?.configDir ?? '.obsidian';
+    const basePath = this.plugin?.manifest?.dir || `${configDir}/plugins/dino-tabletop-engine`;
     return `${basePath}/maps/${this.mapId}.json`;
   }
 
@@ -474,9 +475,9 @@ export class CellStore {
    */
   public scheduleSave(): void {
     if (this.saveTimeout) {
-      clearTimeout(this.saveTimeout);
+      window.clearTimeout(this.saveTimeout);
     }
-    this.saveTimeout = setTimeout(() => {
+    this.saveTimeout = window.setTimeout(() => {
       this.saveToDisk();
     }, 500);
   }
@@ -553,7 +554,7 @@ export class CellStore {
       }
 
       const raw = await adapter.read(filePath);
-      const data: SerializedMapFile = JSON.parse(raw);
+      const data = JSON.parse(raw) as SerializedMapFile;
 
       this.chunks.clear();
 

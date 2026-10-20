@@ -7,13 +7,14 @@ import {
   IMAGE_EXTS,
   WEIGHT_KEYS,
   DinoSettings,
+  DinoPlugin,
+  IDinoTabletopView,
   CampaignData,
   MapData,
   TokenData,
   POIData,
   DrawingData,
   CounterData,
-  InventoryItem,
   NotePanelHandle,
   ToolContext,
   MeasureUnit,
@@ -34,7 +35,6 @@ import { renderGridLayer, snapCoordsToGrid } from '../grid';
 import { FileSuggestModal } from '../modals/FileSuggestModal';
 import { NamePromptModal } from '../modals/NamePromptModal';
 import { DamageModal } from '../modals/DamageModal';
-import { AdjustCounterModal } from '../modals/AdjustCounterModal';
 import { TokenEditModal } from '../modals/TokenEditModal';
 import { ItemEditModal } from '../modals/ItemEditModal';
 import { CapacityEditModal } from '../modals/CapacityEditModal';
@@ -69,7 +69,7 @@ import {
   nudgeSelection,
   clearSelection,
 } from '../modules/cellBoardSelect';
-import { isPlayerViewActive, setPlayerViewActive, togglePlayerViewActive } from '../modules/playerView';
+import { isPlayerViewActive } from '../modules/playerView';
 import { broadcastPing, spawnPingEffect } from '../modules/laserPing';
 
 export interface InventoryPanelHandle {
@@ -79,8 +79,8 @@ export interface InventoryPanelHandle {
   close: () => void;
 }
 
-export class DinoTabletopView extends ItemView {
-  plugin: any;
+export class DinoTabletopView extends ItemView implements IDinoTabletopView {
+  plugin: DinoPlugin;
   zoom: number;
   metaListener: any;
   panelsLayer: HTMLElement;
@@ -98,7 +98,7 @@ export class DinoTabletopView extends ItemView {
   lateralToolbar: CellBoardLateralToolbar | null;
   private keydownListener: ((e: KeyboardEvent) => void) | null = null;
 
-  constructor(leaf: WorkspaceLeaf, plugin: any) {
+  constructor(leaf: WorkspaceLeaf, plugin: DinoPlugin) {
     super(leaf);
     this.plugin = plugin;
     this.zoom = 1;
@@ -129,7 +129,7 @@ export class DinoTabletopView extends ItemView {
 
   async onOpen(): Promise<void> {
     this.metaListener = this.app.metadataCache.on('changed', (file: TFile) => this.onNoteChanged(file));
-    this.containerEl.style.position = 'relative';
+    this.containerEl.addClass('dte-view-container');
     this.panelsLayer = this.containerEl.createDiv({ cls: 'dte-panels-layer' });
     this.render();
   }
@@ -865,10 +865,12 @@ export class DinoTabletopView extends ItemView {
         const x = Math.max(8, Math.min(moveEv.clientX - parentRect.left - dragOffsetX, parentRect.width - rect.width - 8));
         const y = Math.max(8, Math.min(moveEv.clientY - parentRect.top - dragOffsetY, parentRect.height - rect.height - 8));
 
-        toolbarEl.style.left = `${x}px`;
-        toolbarEl.style.top = `${y}px`;
-        toolbarEl.style.right = 'auto';
-        toolbarEl.style.bottom = 'auto';
+        toolbarEl.setCssStyles({
+          left: `${x}px`,
+          top: `${y}px`,
+          right: 'auto',
+          bottom: 'auto',
+        });
       };
 
       const onPointerUp = () => {
@@ -918,7 +920,7 @@ export class DinoTabletopView extends ItemView {
       this.keydownListener = null;
     }
 
-    this.keydownListener = async (e: KeyboardEvent) => {
+    const asyncKeydownHandler = async (e: KeyboardEvent): Promise<void> => {
       const target = e.target as HTMLElement | null;
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
         return;
@@ -1055,6 +1057,10 @@ export class DinoTabletopView extends ItemView {
       }
     };
 
+    this.keydownListener = (e: KeyboardEvent): void => {
+      void asyncKeydownHandler(e);
+    };
+
     window.addEventListener('keydown', this.keydownListener);
   }
 
@@ -1070,7 +1076,6 @@ export class DinoTabletopView extends ItemView {
 
     const vp = globalViewportManager.getViewport(mapId);
     inner.style.transform = `translate(${vp.x}px, ${vp.y}px) scale(${vp.scale})`;
-    inner.style.transformOrigin = '0 0';
 
     for (const poi of map.pois) {
       this.renderPOI(inner, map, poi);
@@ -1105,14 +1110,14 @@ export class DinoTabletopView extends ItemView {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.code === 'Space' && !isSpaceDown && !(e.target as HTMLElement).matches('input, textarea')) {
         isSpaceDown = true;
-        wrap.style.cursor = 'grab';
+        wrap.setCssStyles({ cursor: 'grab' });
       }
     };
     const handleKeyUp = (e: KeyboardEvent) => {
       if (e.code === 'Space') {
         isSpaceDown = false;
         const activeTool = globalToolManager.getActiveTool();
-        wrap.style.cursor = activeTool?.cursor || 'default';
+        wrap.setCssStyles({ cursor: activeTool?.cursor || 'default' });
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -1123,7 +1128,7 @@ export class DinoTabletopView extends ItemView {
         e.preventDefault();
         cellToolState.isPanning = true;
         cellToolState.panStart = { x: e.clientX, y: e.clientY };
-        wrap.style.cursor = 'grabbing';
+        wrap.setCssStyles({ cursor: 'grabbing' });
         return;
       }
 
@@ -1189,7 +1194,7 @@ export class DinoTabletopView extends ItemView {
     const onPointerUp = (e: PointerEvent) => {
       if (cellToolState.isPanning) {
         cellToolState.isPanning = false;
-        wrap.style.cursor = isSpaceDown ? 'grab' : globalToolManager.getActiveTool()?.cursor || 'default';
+        wrap.setCssStyles({ cursor: isSpaceDown ? 'grab' : globalToolManager.getActiveTool()?.cursor || 'default' });
         return;
       }
 
@@ -1211,7 +1216,7 @@ export class DinoTabletopView extends ItemView {
     const onPointerLeave = (e: PointerEvent) => {
       if (cellToolState.isPanning) {
         cellToolState.isPanning = false;
-        wrap.style.cursor = isSpaceDown ? 'grab' : globalToolManager.getActiveTool()?.cursor || 'default';
+        wrap.setCssStyles({ cursor: isSpaceDown ? 'grab' : globalToolManager.getActiveTool()?.cursor || 'default' });
       }
       const activeTool = globalToolManager.getActiveTool();
       if (activeTool && activeTool.id === 'laser') {
@@ -1306,9 +1311,11 @@ export class DinoTabletopView extends ItemView {
       });
 
       if (data.floatingToolbarPosition && layout === 'floating') {
-        floatingToolbar.style.left = `${data.floatingToolbarPosition.x}px`;
-        floatingToolbar.style.top = `${data.floatingToolbarPosition.y}px`;
-        floatingToolbar.style.right = 'auto';
+        floatingToolbar.setCssStyles({
+          left: `${data.floatingToolbarPosition.x}px`,
+          top: `${data.floatingToolbarPosition.y}px`,
+          right: 'auto',
+        });
       }
 
       this.renderToolbarItems(floatingToolbar, map, data, 'floating', container);
@@ -1371,7 +1378,6 @@ export class DinoTabletopView extends ItemView {
 
     const vp = globalViewportManager.getViewport(mapId);
     inner.style.transform = `translate(${vp.x}px, ${vp.y}px) scale(${vp.scale})`;
-    inner.style.transformOrigin = '0 0';
   }
 
   renderBoard(container: HTMLElement, map: MapData, savedScroll?: { left: number; top: number } | null): void {
@@ -1443,9 +1449,11 @@ export class DinoTabletopView extends ItemView {
       });
 
       if (data.floatingToolbarPosition && layout === 'floating') {
-        floatingToolbar.style.left = `${data.floatingToolbarPosition.x}px`;
-        floatingToolbar.style.top = `${data.floatingToolbarPosition.y}px`;
-        floatingToolbar.style.right = 'auto';
+        floatingToolbar.setCssStyles({
+          left: `${data.floatingToolbarPosition.x}px`,
+          top: `${data.floatingToolbarPosition.y}px`,
+          right: 'auto',
+        });
       }
 
       this.renderToolbarItems(floatingToolbar, map, data, 'floating', container);
@@ -1621,13 +1629,14 @@ export class DinoTabletopView extends ItemView {
     el.style.width = (poi.size || 36) + 'px';
     el.style.height = (poi.size || 36) + 'px';
 
+    if (poi.name) el.createDiv({ cls: 'dte-poi-label', text: poi.name });
     const mark = el.createDiv({ cls: 'dte-poi-mark' });
     if (poi.color) {
       mark.style.background = poi.color;
       mark.style.color = isLightColor(poi.color) ? '#000' : '#fff';
       mark.style.border = '2px solid ' + (isLightColor(poi.color) ? '#000' : '#fff');
     }
-
+    
     const imgFile = poi.imagePath ? this.app.vault.getAbstractFileByPath(poi.imagePath) : null;
     if (imgFile) {
       const src = this.app.vault.getResourcePath(imgFile as TFile);
@@ -1641,7 +1650,6 @@ export class DinoTabletopView extends ItemView {
     } else {
       mark.setText('📍');
     }
-    if (poi.name) el.createDiv({ cls: 'dte-poi-label', text: poi.name });
 
     let dragging = false;
     let moved = false;
@@ -1704,7 +1712,7 @@ export class DinoTabletopView extends ItemView {
       dragging = false;
       try {
         el.releasePointerCapture(e.pointerId);
-      } catch (err) {
+      } catch {
         /* noop */
       }
       if (moved) {
@@ -1862,8 +1870,6 @@ export class DinoTabletopView extends ItemView {
     if (imgFile) {
       const src = this.app.vault.getResourcePath(imgFile as TFile);
       circle.style.backgroundImage = `url("${src}")`;
-      circle.style.backgroundSize = 'cover';
-      circle.style.backgroundPosition = 'center';
     } else if (token.icon && this.plugin.settings.enableCustomFont) {
       circle.style.background = token.color || '#4c8bf5';
       const iconCls = getIconClass(token.icon, this.plugin.settings.customFontPrefix);
@@ -2012,7 +2018,7 @@ export class DinoTabletopView extends ItemView {
       dragging = false;
       try {
         el.releasePointerCapture(e.pointerId);
-      } catch (err) {
+      } catch {
         /* noop */
       }
       if (moved) {
@@ -2148,7 +2154,6 @@ export class DinoTabletopView extends ItemView {
 
   openInventoryPanel(token: TokenData, map: MapData): void {
     if (!this.panelsLayer) {
-      this.containerEl.style.position = 'relative';
       this.panelsLayer = this.containerEl.createDiv({ cls: 'dte-panels-layer' });
     }
 
@@ -2169,10 +2174,11 @@ export class DinoTabletopView extends ItemView {
 
     const el = this.panelsLayer.createDiv({ cls: 'dte-panel dte-inventory-panel' });
     const offset = (Object.keys(this.inventoryPanels).length % 5) * 20;
-    el.style.left = 40 + offset + 'px';
-    el.style.top = 40 + offset + 'px';
-    el.style.right = 'auto';
-    el.style.pointerEvents = 'auto';
+    el.setCssStyles({
+      left: `${40 + offset}px`,
+      top: `${40 + offset}px`,
+      right: 'auto',
+    });
 
     let isDragging = false;
     let dragOffsetX = 0;
@@ -2449,7 +2455,6 @@ export class DinoTabletopView extends ItemView {
 
   openNotePanel(file: TFile): void {
     if (!this.panelsLayer) {
-      this.containerEl.style.position = 'relative';
       this.panelsLayer = this.containerEl.createDiv({ cls: 'dte-panels-layer' });
     }
 
@@ -2473,7 +2478,7 @@ export class DinoTabletopView extends ItemView {
     const body = el.createDiv({ cls: 'dte-note-panel-body' });
     const previewEl = body.createDiv({ cls: 'dte-note-panel-preview markdown-rendered' });
     const textarea = body.createEl('textarea', { cls: 'dte-note-panel-textarea' }) as HTMLTextAreaElement;
-    textarea.style.display = 'none';
+    textarea.hide();
     textarea.placeholder = t('panel.loading');
 
     const handle: NotePanelHandle = { el, file, textarea, previewEl, mode: 'preview', rawContent: '' };
@@ -2490,11 +2495,11 @@ export class DinoTabletopView extends ItemView {
       })
       .catch(() => {});
 
-    let saveTimeout: ReturnType<typeof setTimeout> | null = null;
+    let saveTimeout: number | null = null;
     const scheduleSave = () => {
       handle.rawContent = textarea.value;
-      if (saveTimeout) clearTimeout(saveTimeout);
-      saveTimeout = setTimeout(() => {
+      if (saveTimeout) window.clearTimeout(saveTimeout);
+      saveTimeout = window.setTimeout(() => {
         this.app.vault.modify(file, textarea.value).catch(() => {});
       }, 600);
     };
@@ -2504,24 +2509,24 @@ export class DinoTabletopView extends ItemView {
       if (handle.mode === 'preview') {
         handle.mode = 'edit';
         textarea.value = handle.rawContent;
-        previewEl.style.display = 'none';
-        textarea.style.display = '';
+        previewEl.hide();
+        textarea.show();
         toggleBtn.setText(t('panel.previewMode'));
         textarea.focus();
       } else {
-        if (saveTimeout) clearTimeout(saveTimeout);
+        if (saveTimeout) window.clearTimeout(saveTimeout);
         handle.rawContent = textarea.value;
         this.app.vault.modify(file, handle.rawContent).catch(() => {});
         handle.mode = 'preview';
-        textarea.style.display = 'none';
-        previewEl.style.display = '';
+        textarea.hide();
+        previewEl.show();
         toggleBtn.setText(t('panel.editMode'));
         renderPreview();
       }
     });
 
     closeBtn.addEventListener('click', () => {
-      if (saveTimeout) clearTimeout(saveTimeout);
+      if (saveTimeout) window.clearTimeout(saveTimeout);
       const finalContent = handle.mode === 'edit' ? textarea.value : handle.rawContent;
       this.app.vault.modify(file, finalContent).catch(() => {});
       el.remove();
@@ -2555,7 +2560,7 @@ export class DinoTabletopView extends ItemView {
       dragging = false;
       try {
         header.releasePointerCapture(e.pointerId);
-      } catch (err) {
+      } catch {
         /* noop */
       }
       el.removeClass('dte-note-panel-dragging');

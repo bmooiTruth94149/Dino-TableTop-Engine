@@ -1,10 +1,9 @@
-import { CellEdgeStyle, CellMapData, CellPaletteColor, ToolContext, ToolDefinition, UndoStep } from '../types';
+import { CellEdgeStyle, CellMapData, CellPaletteColor, ToolContext, UndoStep } from '../types';
 import { worldToCell } from './cellCoordinates';
 import { CellStore, getCellStore } from './cellStore';
 import { globalHistoryManager, globalToolManager, globalViewportManager } from './cellBoardCore';
 import { registerSelectTool } from './cellBoardSelect';
 import { broadcastLaser, broadcastPing, spawnPingEffect, updateLaserOverlay } from './laserPing';
-import { setIcon } from 'obsidian';
 
 export const DEFAULT_CELL_PALETTE: CellPaletteColor[] = [
   { color: '#2f3542', label: 'Piedra oscura' },
@@ -53,8 +52,8 @@ export const cellToolState: CellToolState = {
 export function initDefaultCellMapData(): CellMapData {
   return {
     cellSizePx: 48,
-    palette: JSON.parse(JSON.stringify(DEFAULT_CELL_PALETTE)),
-    edgeStyles: JSON.parse(JSON.stringify(DEFAULT_EDGE_STYLES)),
+    palette: JSON.parse(JSON.stringify(DEFAULT_CELL_PALETTE)) as CellPaletteColor[],
+    edgeStyles: JSON.parse(JSON.stringify(DEFAULT_EDGE_STYLES)) as CellEdgeStyle[],
     backgroundImagePath: null,
     backgroundOffsetX: 0,
     backgroundOffsetY: 0,
@@ -135,7 +134,7 @@ export function registerCellBoardTools(): void {
       if (e.button !== 0) return;
       cellToolState.isPanning = true;
       cellToolState.panStart = { x: e.clientX, y: e.clientY };
-      ctx.containerEl.style.cursor = 'grabbing';
+      ctx.containerEl.setCssStyles({ cursor: 'grabbing' });
     },
     onPointerMove: (e, worldPos, ctx) => {
       if (!cellToolState.isPanning) return;
@@ -150,7 +149,7 @@ export function registerCellBoardTools(): void {
     },
     onPointerUp: (e, worldPos, ctx) => {
       cellToolState.isPanning = false;
-      ctx.containerEl.style.cursor = 'grab';
+      ctx.containerEl.setCssStyles({ cursor: 'grab' });
     },
     renderOptions: (el, ctx) => {
       el.empty();
@@ -513,7 +512,6 @@ export function registerCellBoardTools(): void {
 
   // ─── 7b. RECTANGLE PAINT TOOL ───
   let rectStartWorld: { x: number; y: number } | null = null;
-  let rectCurrentWorld: { x: number; y: number } | null = null;
   let rectActive = false;
 
   globalToolManager.registerTool({
@@ -529,11 +527,9 @@ export function registerCellBoardTools(): void {
       if (!ctx.map.cellMap) return;
       rectActive = true;
       rectStartWorld = { x: worldPos.x, y: worldPos.y };
-      rectCurrentWorld = { x: worldPos.x, y: worldPos.y };
     },
     onPointerMove: (e, worldPos, ctx) => {
       if (!rectActive || !rectStartWorld || !ctx.map.cellMap) return;
-      rectCurrentWorld = { x: worldPos.x, y: worldPos.y };
 
       // Show visual preview rectangle
       let previewEl = ctx.containerEl.querySelector('.dte-rect-paint-preview') as HTMLElement | null;
@@ -607,7 +603,6 @@ export function registerCellBoardTools(): void {
       }
 
       rectStartWorld = null;
-      rectCurrentWorld = null;
     },
     onDeactivate: (ctx) => {
       const container = ctx?.containerEl || document;
@@ -616,7 +611,6 @@ export function registerCellBoardTools(): void {
       document.querySelectorAll('.dte-rect-paint-preview').forEach((el) => el.remove());
       rectActive = false;
       rectStartWorld = null;
-      rectCurrentWorld = null;
     },
     renderOptions: (el, ctx, refresh) => {
       renderPaletteToolbar(el, ctx, refresh);

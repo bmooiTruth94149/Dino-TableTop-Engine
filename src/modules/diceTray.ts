@@ -1,15 +1,38 @@
 import { App, MarkdownRenderer, Menu, setIcon } from 'obsidian';
 import { EngineModule } from './types';
 import { t, TranslationKey } from '../i18n';
-import { DinoSettings, DiceTrayExpression } from '../types';
+import { DinoSettings, DinoPlugin } from '../types';
 import { genId } from '../utils';
 import { NamePromptModal } from '../modals/NamePromptModal';
 
+interface DiceRollerInstance {
+  roll?: () => Promise<unknown>;
+  containerEl?: HTMLElement;
+  el?: HTMLElement;
+}
+
+interface DiceRollerPluginInstance {
+  _loaded?: boolean;
+  getRoller?: (formula: string, sourcePath: string) => Promise<DiceRollerInstance | null>;
+  api?: {
+    getRoller?: (formula: string, sourcePath: string) => Promise<DiceRollerInstance | null>;
+  };
+}
+
+interface AppWithPlugins extends App {
+  plugins?: {
+    getPlugin?: (name: string) => unknown;
+    plugins?: Record<string, unknown>;
+  };
+}
+
 /** Helper to find the active Dice Roller plugin instance */
-export function getDiceRollerPlugin(app: App): any {
-  const p = (window as any).DiceRoller
-    || (app as any).plugins?.getPlugin?.('obsidian-dice-roller')
-    || (app as any).plugins?.plugins?.['obsidian-dice-roller'];
+export function getDiceRollerPlugin(app: App): DiceRollerPluginInstance | null {
+  const customWin = window as unknown as { DiceRoller?: DiceRollerPluginInstance };
+  const appPlugins = app as unknown as AppWithPlugins;
+  const p = customWin.DiceRoller
+    || (appPlugins.plugins?.getPlugin?.('obsidian-dice-roller') as DiceRollerPluginInstance | undefined)
+    || (appPlugins.plugins?.plugins?.['obsidian-dice-roller'] as DiceRollerPluginInstance | undefined);
   return p && p._loaded !== false ? p : null;
 }
 
@@ -21,7 +44,7 @@ export function isDiceRollerAvailable(app: App): boolean {
 /** Parse and calculate fallback rolls if plugin doesn't produce DOM */
 function evaluateDiceFallback(formula: string): { total: number; rolls: number[] } | null {
   try {
-    const match = formula.replace(/\s+/g, '').match(/^(\d*)d(\d+)([\+\-]\d+)?$/i);
+    const match = formula.replace(/\s+/g, '').match(/^(\d*)d(\d+)([+-]\d+)?$/i);
     if (!match) return null;
     const count = parseInt(match[1] || '1', 10);
     const sides = parseInt(match[2], 10);
@@ -45,7 +68,7 @@ export async function renderDiceExpression(
   container: HTMLElement,
   expression: string,
   sourcePath: string = '',
-  component?: any
+  component?: unknown
 ): Promise<void> {
   container.empty();
   const cleanedExpr = expression.trim();
@@ -61,7 +84,8 @@ export async function renderDiceExpression(
     const getRollerFn = plugin.getRoller || plugin.api?.getRoller;
     if (typeof getRollerFn === 'function') {
       try {
-        const roller = await getRollerFn.call(plugin.api || plugin, cleanFormula, sourcePath);
+        const target = plugin.api || plugin;
+        const roller = await getRollerFn.call(target, cleanFormula, sourcePath);
         if (roller) {
           const res = typeof roller.roll === 'function' ? await roller.roll() : null;
           const el = roller.containerEl || roller.el;
@@ -71,7 +95,7 @@ export async function renderDiceExpression(
           } else if (res !== null && res !== undefined) {
             const resEl = container.createDiv({ cls: 'dte-dice-fallback-res' });
             resEl.createSpan({ text: `🎲 ${cleanFormula}: `, cls: 'dte-dice-res-label' });
-            resEl.createSpan({ text: `${res}`, cls: 'dte-dice-res-num' });
+            resEl.createSpan({ text: `${String(res)}`, cls: 'dte-dice-res-num' });
             return;
           }
         }
@@ -84,11 +108,15 @@ export async function renderDiceExpression(
   // Method 2: Try MarkdownRenderer with `dice: <expr>|render`
   try {
     const markdown = `\`dice: ${cleanFormula}|render\``;
-    const comp = component || (app as any).plugins?.getPlugin?.('dino-tabletop-engine') || null;
-    if ((MarkdownRenderer as any).render) {
-      await (MarkdownRenderer as any).render(app, markdown, container, sourcePath, comp);
-    } else {
-      await MarkdownRenderer.renderMarkdown(markdown, container, sourcePath, comp);
+    const comp = component || (app as unknown as AppWithPlugins).plugins?.getPlugin?.('dino-tabletop-engine') || null;
+    const renderer = MarkdownRenderer as unknown as {
+      render?: (app: App, markdown: string, el: HTMLElement, sourcePath: string, component: unknown) => Promise<void>;
+      renderMarkdown?: (markdown: string, el: HTMLElement, sourcePath: string, component: unknown) => Promise<void>;
+    };
+    if (typeof renderer.render === 'function') {
+      await renderer.render(app, markdown, container, sourcePath, comp);
+    } else if (typeof renderer.renderMarkdown === 'function') {
+      await renderer.renderMarkdown(markdown, container, sourcePath, comp);
     }
     if (container.children.length > 0 && container.textContent?.trim()) {
       return;
@@ -113,7 +141,7 @@ export async function renderDiceExpression(
 
 export class DiceTrayPanel {
   app: App;
-  plugin: any;
+  plugin: DinoPlugin;
   container: HTMLElement;
   el: HTMLElement;
   minimized: boolean = false;
@@ -129,7 +157,7 @@ export class DiceTrayPanel {
   private dragOffsetX: number = 0;
   private dragOffsetY: number = 0;
 
-  constructor(app: App, plugin: any, container: HTMLElement) {
+  constructor(app: App, plugin: DinoPlugin, container: HTMLElement) {
     this.app = app;
     this.plugin = plugin;
     this.container = container;
@@ -158,9 +186,11 @@ export class DiceTrayPanel {
   private setupPosition(): void {
     const s = this.plugin.settings as DinoSettings;
     const pos = s.diceTray?.panelPosition || { x: 80, y: 200 };
-    this.el.style.position = 'absolute';
-    this.el.style.left = `${pos.x}px`;
-    this.el.style.top = `${pos.y}px`;
+    this.el.setCssStyles({
+      position: 'absolute',
+      left: `${pos.x}px`,
+      top: `${pos.y}px`,
+    });
   }
 
   public build(): void {
@@ -198,7 +228,7 @@ export class DiceTrayPanel {
     setIcon(closeBtn, 'x');
     closeBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      this.el.style.display = 'none';
+      this.el.hide();
     });
 
     this.setupDrag(header);
@@ -234,14 +264,14 @@ export class DiceTrayPanel {
         attr: { 'aria-label': `1${die} (Double click for count)` },
       });
       
-      let clickTimeout: any = null;
+      let clickTimeout: number | null = null;
       dieBtn.addEventListener('click', () => {
         if (clickTimeout) {
-          clearTimeout(clickTimeout);
+          window.clearTimeout(clickTimeout);
           clickTimeout = null;
           return;
         }
-        clickTimeout = setTimeout(() => {
+        clickTimeout = window.setTimeout(() => {
           clickTimeout = null;
           this.rollExpression(`1${die}`, die);
         }, 220);
@@ -249,7 +279,7 @@ export class DiceTrayPanel {
 
       dieBtn.addEventListener('dblclick', () => {
         if (clickTimeout) {
-          clearTimeout(clickTimeout);
+          window.clearTimeout(clickTimeout);
           clickTimeout = null;
         }
         new NamePromptModal(
@@ -486,13 +516,13 @@ export class DiceTrayPanel {
   }
 
   public open(): void {
-    this.el.style.display = 'flex';
+    this.el.show();
     this.minimized = false;
     this.build();
   }
 
   public show(): void {
-    this.el.style.display = 'flex';
+    this.el.show();
   }
 
   private setupDrag(header: HTMLElement): void {
@@ -511,10 +541,12 @@ export class DiceTrayPanel {
         const parent = this.container.getBoundingClientRect();
         const x = Math.max(0, Math.min(moveEv.clientX - parent.left - this.dragOffsetX, parent.width - 150));
         const y = Math.max(0, Math.min(moveEv.clientY - parent.top - this.dragOffsetY, parent.height - 50));
-        this.el.style.left = `${x}px`;
-        this.el.style.top = `${y}px`;
-        this.el.style.right = 'auto';
-        this.el.style.bottom = 'auto';
+        this.el.setCssStyles({
+          left: `${x}px`,
+          top: `${y}px`,
+          right: 'auto',
+          bottom: 'auto',
+        });
       };
 
       const onMouseUp = () => {

@@ -1,8 +1,8 @@
 import { App, TFile, TFolder, TAbstractFile, setIcon, Notice } from 'obsidian';
 import { EngineModule } from './types';
 import { t, TranslationKey } from '../i18n';
-import { DinoSettings, CampaignData } from '../types';
-import { genId } from '../utils';
+import { DinoSettings, CampaignData, DinoPlugin } from '../types';
+import { formatTimeline } from './timeline';
 
 function getConfiguredFolder(app: App, campaign: CampaignData): TFolder | null {
   const path = campaign.diaryFolderPath;
@@ -37,16 +37,14 @@ function buildTree(folder: TFolder): TreeNode[] {
 }
 
 /** Suggest a filename for a new diary entry */
-function suggestEntryName(app: App, plugin: any): string {
-  const settings = plugin.settings as DinoSettings;
+function suggestEntryName(app: App, plugin: DinoPlugin): string {
+  const settings = plugin.settings;
 
   // Try to get in-game date from timeline module if active
   if (settings.enabledModules?.['timeline'] && settings.currentTimelineId) {
     const tl = settings.timelines?.[settings.currentTimelineId];
     if (tl) {
-      // Dynamic import avoided — use the exported formatTimeline if available
       try {
-        const { formatTimeline } = require('./timeline');
         const formatted = formatTimeline(tl);
         if (formatted && formatted.trim()) {
           return `${formatted}`;
@@ -191,7 +189,7 @@ class NewEntryModal extends Modal {
 
 export class CampaignDiaryPanel {
   app: App;
-  plugin: any;
+  plugin: DinoPlugin;
   el: HTMLElement;
   minimized = false;
   private dragOffsetX = 0;
@@ -199,17 +197,11 @@ export class CampaignDiaryPanel {
   private isDragging = false;
   private collapsedFolders: Set<string> = new Set();
 
-  constructor(app: App, plugin: any, panelsLayer: HTMLElement) {
+  constructor(app: App, plugin: DinoPlugin, panelsLayer: HTMLElement) {
     this.app = app;
     this.plugin = plugin;
 
     this.el = panelsLayer.createDiv({ cls: 'dte-panel dte-diary-panel' });
-    this.el.style.right = '16px';
-    this.el.style.bottom = '60px';
-    this.el.style.left = 'auto';
-    this.el.style.top = 'auto';
-    this.el.style.pointerEvents = 'auto';
-
     this.build();
   }
 
@@ -353,7 +345,7 @@ export class CampaignDiaryPanel {
           const leaf = this.app.workspace.getLeaf('split');
           await leaf.openFile(newFile);
           new Notice(t('diary.entryCreated').replace('{name}', filename));
-        } catch (err) {
+        } catch {
           new Notice(t('diary.createError'));
         }
       }).open();
@@ -421,10 +413,12 @@ export class CampaignDiaryPanel {
         if (!parent) return;
         const x = Math.max(0, Math.min(ev.clientX - parent.left - this.dragOffsetX, parent.width - 150));
         const y = Math.max(0, Math.min(ev.clientY - parent.top - this.dragOffsetY, parent.height - 50));
-        this.el.style.left = `${x}px`;
-        this.el.style.top = `${y}px`;
-        this.el.style.right = 'auto';
-        this.el.style.bottom = 'auto';
+        this.el.setCssStyles({
+          left: `${x}px`,
+          top: `${y}px`,
+          right: 'auto',
+          bottom: 'auto',
+        });
       };
 
       const onMouseUp = () => {

@@ -1,0 +1,83 @@
+{
+  "language": "auto",
+  "toolbarLayout": "top",
+  "floatingToolbarPosition": {
+    "x": 16,
+    "y": 16
+  },
+  "enabledModules": {
+    "combat-tracker": false,
+    "cards": false,
+    "timeline": false,
+    "measure": true,
+    "wargame": false,
+    "dice-tray": false,
+    "missions": false,
+    "oracle": false
+  },
+  "campaigns": {
+    "mvfzascm-2ju09sp": {
+      "name": "test de campaña",
+      "maps": {
+        "mvfzf2vm-kc5choz": {
+          "name": "map",
+          "imagePath": "map.png",
+          "drawing": null,
+          "tokens": [
+            {
+              "id": "mvfzmye1-i4jmpzq",
+              "name": "npc",
+              "color": "#4c8bf5",
+              "size": 44,
+              "x": 70.28766908469949,
+              "y": 31.890286178369884,
+              "hp": 10,
+              "maxHp": 10,
+              "linkedNote": null,
+              "imagePath": "enemigo.png",
+              "counters": [],
+              "conditions": []
+            }
+          ],
+          "pois": [
+            {
+              "id": "mvfzfcff-oavppyq",
+              "name": "mark",
+              "size": 36,
+              "x": 61.86572571447183,
+              "y": 37.02533583762514,
+              "imagePath": null,
+              "linkedNote": null,
+              "color": "#2d5395",
+              "icon": "ra-axe"
+            }
+          ]
+        }
+      },
+      "currentMapId": "mvfzf2vm-kc5choz"
+    }
+  },
+  "currentCampaignId": "mvfzascm-2ju09sp",
+  "bestiary": {},
+  "bestiaryPacks": [],
+  "decks": {},
+  "timelines": {},
+  "clocks": {},
+  "currentTimelineId": null,
+  "wargameRosters": {},
+  "activeRosterId": null,
+  "diceTray": {
+    "savedExpressions": [],
+    "panelPosition": {
+      "x": 80,
+      "y": 200
+    }
+  },
+  "oracleDecks": [],
+  "activeOracleDeckId": null,
+  "oracleResetQuestionOnDraw": true,
+  "oraclePanelPosition": {
+    "x": 120,
+    "y": 120
+  }
+}

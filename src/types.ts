@@ -1,4 +1,46 @@
+import type { App, Plugin, WorkspaceLeaf } from 'obsidian';
+
 export const VIEW_TYPE_DINO = 'dino-tabletop-engine-view';
+
+export interface DinoPlugin extends Plugin {
+  settings: DinoSettings;
+  saveSettings(): Promise<void>;
+  activateView(): Promise<void>;
+  getOpenDinoView(): IDinoTabletopView | null;
+}
+
+/** Minimal interface shared by all floating/dockable panels */
+export interface IPanel {
+  open?(): void;
+  build?(): void;
+  destroy?(): void;
+  minimized?: boolean;
+}
+
+export interface IDinoTabletopView {
+  app: App;
+  leaf: WorkspaceLeaf;
+  plugin: DinoPlugin;
+  zoom: number;
+  panelsLayer?: HTMLElement;
+  containerEl: HTMLElement;
+  getCurrentMap(): MapData | null;
+  getCurrentCampaign(): CampaignData | null;
+  getViewportCenterCoords(): { x: number; y: number };
+  render(): void;
+  requestRender?(): void;
+  applyTokenDelta?(map: MapData, token: TokenData, delta: number): void;
+  measureManager?: unknown;
+  combatPanel?: IPanel | null;
+  cardsPanel?: IPanel | null;
+  timelinePanel?: IPanel | null;
+  diaryPanel?: IPanel | null;
+  diceTrayPanel?: IPanel | null;
+  missionsPanel?: IPanel | null;
+  oraclePanel?: IPanel | null;
+  wargamePanel?: IPanel | null;
+  playerViewPanel?: IPanel | null;
+}
 
 export const HP_KEYS = ['hp', 'HP', 'puntosDeVida', 'puntos_de_vida', 'vida', 'Vida', 'PV', 'pv'];
 export const MAXHP_KEYS = [
@@ -397,7 +439,7 @@ export interface UndoStep {
 }
 
 export interface ToolContext {
-  view: any;
+  view: IDinoTabletopView;
   map: MapData;
   mapId: string;
   viewport: ViewportState;
@@ -578,6 +620,8 @@ export interface DinoSettings {
   activeOracleDeckId?: string | null;
   oracleResetQuestionOnDraw?: boolean;
   oraclePanelPosition?: { x: number; y: number };
+  enableCustomFont?: boolean;
+  customFontPrefix?: string;
 }
 
 export const DEFAULT_SETTINGS: DinoSettings = {

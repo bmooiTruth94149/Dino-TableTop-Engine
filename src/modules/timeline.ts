@@ -11,6 +11,7 @@ import {
   TimelineEvent,
 } from '../types';
 import { genId } from '../utils';
+import { NamePromptModal } from '../modals/NamePromptModal';
 
 // ─── Mathematical and Formatting Helpers ─────────────────────────────────────
 
@@ -220,11 +221,6 @@ export class TimelinePanel {
     this.onUpdate = onUpdate;
 
     this.el = panelsLayer.createDiv({ cls: 'dte-panel dte-timeline-panel' });
-    this.el.style.left = '16px';
-    this.el.style.top = '60px';
-    this.el.style.right = 'auto';
-    this.el.style.pointerEvents = 'auto';
-
     this.build();
   }
 
@@ -344,13 +340,18 @@ export class TimelinePanel {
     counterPill.createSpan({ text: `${activeTl.unit || 'unidad'}: ${activeTl.counter}` });
     counterPill.title = 'Click para editar contador directamente';
     counterPill.addEventListener('click', () => {
-      const valStr = prompt(t('timeline.currentValue'), String(activeTl.counter));
-      if (valStr !== null) {
-        const parsed = parseInt(valStr, 10);
-        if (!isNaN(parsed)) {
-          this.advance(activeTl, parsed - activeTl.counter);
-        }
-      }
+      new NamePromptModal(
+        this.app,
+        t('timeline.currentValue'),
+        '',
+        (valStr) => {
+          const parsed = parseInt(valStr, 10);
+          if (!isNaN(parsed)) {
+            this.advance(activeTl, parsed - activeTl.counter);
+          }
+        },
+        String(activeTl.counter),
+      ).open();
     });
 
     // ── Advance Buttons ──
@@ -505,9 +506,11 @@ export class TimelinePanel {
         if (!parent) return;
         const x = Math.max(0, Math.min(ev.clientX - parent.left - this.dragOffsetX, parent.width - 150));
         const y = Math.max(0, Math.min(ev.clientY - parent.top - this.dragOffsetY, parent.height - 50));
-        this.el.style.left = `${x}px`;
-        this.el.style.top = `${y}px`;
-        this.el.style.right = 'auto';
+        this.el.setCssStyles({
+          left: `${x}px`,
+          top: `${y}px`,
+          right: 'auto',
+        });
       };
 
       const onMouseUp = () => {
@@ -550,7 +553,8 @@ export class TimelineManagerModal extends Modal {
   }
 
   onOpen(): void {
-    const { contentEl } = this;
+    const { contentEl, modalEl } = this;
+    modalEl.addClass('dte-modal-large');
     contentEl.empty();
     contentEl.addClass('dte-modal-large');
 
@@ -1104,7 +1108,7 @@ export class TimelineManagerModal extends Modal {
         new Notice(t('timeline.importSuccess'));
         this.activeTab = 'timelines';
         this.renderModal();
-      } catch (e) {
+      } catch {
         new Notice(t('timeline.importError'));
       }
     });

@@ -1,16 +1,14 @@
 import { setIcon } from 'obsidian';
-import { MapData, POIData, TokenData, ToolContext } from '../types';
+import { MapData, POIData, TokenData, ToolContext, IDinoTabletopView } from '../types';
 import { globalHistoryManager, globalToolManager, globalViewportManager } from './cellBoardCore';
-import { cellToolState } from './cellBoardTools';
 import { isPlayerViewActive, togglePlayerViewActive, openProjectionWindow } from './playerView';
 import { TokenEditModal } from '../modals/TokenEditModal';
 import { POIEditModal } from '../modals/POIEditModal';
 import { BestiaryListModal } from '../modals/BestiaryModals';
 import { genId } from '../utils';
-import { updateLaserOverlay } from './laserPing';
 
 export class CellBoardLateralToolbar {
-  private view: any;
+  private view: IDinoTabletopView;
   private container: HTMLElement;
   private map: MapData;
   private mapId: string;
@@ -21,7 +19,7 @@ export class CellBoardLateralToolbar {
   private unsubscribeToolChange: (() => void) | null = null;
   private static savedPosition: { left: number; top: number } | null = null;
 
-  constructor(view: any, container: HTMLElement, map: MapData, mapId: string, boardInner: HTMLElement) {
+  constructor(view: IDinoTabletopView, container: HTMLElement, map: MapData, mapId: string, boardInner: HTMLElement) {
     this.view = view;
     this.container = container;
     this.map = map;
@@ -41,11 +39,10 @@ export class CellBoardLateralToolbar {
     });
 
     if (CellBoardLateralToolbar.savedPosition) {
-      this.toolbarEl.style.left = `${CellBoardLateralToolbar.savedPosition.left}px`;
-      this.toolbarEl.style.top = `${CellBoardLateralToolbar.savedPosition.top}px`;
-    } else {
-      this.toolbarEl.style.top = '56px';
-      this.toolbarEl.style.left = '16px';
+      this.toolbarEl.setCssStyles({
+        left: `${CellBoardLateralToolbar.savedPosition.left}px`,
+        top: `${CellBoardLateralToolbar.savedPosition.top}px`,
+      });
     }
 
     // ─── Drag handle for repositioning ───
@@ -244,11 +241,7 @@ export class CellBoardLateralToolbar {
 
     if (this.boardInner) {
       this.boardInner.setAttribute('data-tool', activeToolId);
-      if (activeTool?.cursor) {
-        this.boardInner.style.cursor = activeTool.cursor;
-      } else {
-        this.boardInner.style.cursor = 'default';
-      }
+      this.boardInner.setCssStyles({ cursor: activeTool?.cursor || 'default' });
     }
 
     // Highlight button in sidebar
@@ -270,11 +263,11 @@ export class CellBoardLateralToolbar {
 
     const activeTool = globalToolManager.getActiveTool();
     if (!activeTool || !activeTool.renderOptions) {
-      this.bottomContextualBar.style.display = 'none';
+      this.bottomContextualBar.hide();
       return;
     }
 
-    this.bottomContextualBar.style.display = 'flex';
+    this.bottomContextualBar.show();
     const ctx: ToolContext = {
       view: this.view,
       map: this.map,

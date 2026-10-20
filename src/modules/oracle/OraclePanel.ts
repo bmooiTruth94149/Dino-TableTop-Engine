@@ -12,7 +12,7 @@ export class OraclePanel {
   private plugin: any;
   private container: HTMLElement;
   public el: HTMLElement;
-  private minimized = false;
+  minimized = false;
 
   // Active state
   private activeTab: 'draw' | 'history' = 'draw';
@@ -75,7 +75,6 @@ export class OraclePanel {
   }
 
   private initDeck(): void {
-    const deck = this.getActiveDeck();
     this.shuffleDeck(false);
   }
 
@@ -102,9 +101,11 @@ export class OraclePanel {
   private setupPosition(): void {
     const s = this.plugin.settings as DinoSettings;
     const pos = s.oraclePanelPosition || { x: 120, y: 120 };
-    this.el.style.position = 'absolute';
-    this.el.style.left = `${pos.x}px`;
-    this.el.style.top = `${pos.y}px`;
+    this.el.setCssStyles({
+      position: 'absolute',
+      left: `${pos.x}px`,
+      top: `${pos.y}px`,
+    });
   }
 
   private setupDrag(handleEl: HTMLElement): void {
@@ -191,12 +192,12 @@ export class OraclePanel {
   }
 
   public open(): void {
-    this.el.style.display = 'flex';
+    this.el.show();
     this.build();
   }
 
   public close(): void {
-    this.el.style.display = 'none';
+    this.el.hide();
   }
 
   public destroy(): void {
@@ -682,8 +683,8 @@ export class OraclePanel {
     const importInput = topBar.createEl('input', {
       type: 'file',
       attr: { accept: '.json' },
+      cls: 'dte-hidden',
     });
-    importInput.style.display = 'none';
     importBtn.addEventListener('click', () => importInput.click());
     importInput.addEventListener('change', (ev) => this.importHistory(ev));
 

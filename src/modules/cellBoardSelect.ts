@@ -1,7 +1,7 @@
 import { MapData, POIData, TokenData, ToolContext, UndoStep } from '../types';
-import { cellToWorld, fromPointer, snapWorldToCell, toCss, worldToCell } from './cellCoordinates';
-import { CellStore, getCellStore } from './cellStore';
-import { globalHistoryManager, globalToolManager, globalViewportManager } from './cellBoardCore';
+import { toCss, worldToCell } from './cellCoordinates';
+import { getCellStore } from './cellStore';
+import { globalHistoryManager, globalToolManager } from './cellBoardCore';
 import { cellToolState } from './cellBoardTools';
 import { genId } from '../utils';
 import { Notice, setIcon } from 'obsidian';
@@ -197,7 +197,7 @@ export function pasteClipboardAt(
 
   // Deep clone and generate new IDs
   clip.tokens.forEach((t) => {
-    const clone: TokenData = JSON.parse(JSON.stringify(t));
+    const clone = JSON.parse(JSON.stringify(t)) as TokenData;
     clone.id = genId();
     clone.x = Math.round(t.x + dx);
     clone.y = Math.round(t.y + dy);
@@ -213,7 +213,7 @@ export function pasteClipboardAt(
   });
 
   clip.pois.forEach((p) => {
-    const clone: POIData = JSON.parse(JSON.stringify(p));
+    const clone = JSON.parse(JSON.stringify(p)) as POIData;
     clone.id = genId();
     clone.x = Math.round(p.x + dx);
     clone.y = Math.round(p.y + dy);
@@ -717,10 +717,6 @@ function renderGhostPreview(
   const dy = worldPos.y - clip.origin.y;
 
   ghost.empty();
-  ghost.style.left = '0px';
-  ghost.style.top = '0px';
-  ghost.style.position = 'absolute';
-  ghost.style.pointerEvents = 'none';
 
   clip.tokens.forEach((t) => {
     const itemEl = ghost!.createDiv({ cls: 'dte-token is-ghost-item' });
